@@ -95,9 +95,14 @@ function ChatWindow() {
       refreshThreads();
     } catch (err) {
       console.error("Error sending chat message:", err);
+      const isLocalhost = API_BASE.includes("localhost");
       const errorMessage = {
         role: "assistant",
-        content: "**Connection Error:** Could not reach the backend server. Please make sure the server is running."
+        content: `**Connection Error:** Could not reach the backend at \`${API_BASE}\` (${err.message}).\n\n${
+          isLocalhost
+            ? `> **Note:** The frontend is configured to reach \`localhost\`. If you deployed on Vercel, make sure you set the environment variable \`VITE_API_BASE_URL\` in Vercel to your live Render backend URL and **Redeploy**.`
+            : `> **Note:** If your backend is hosted on Render (Free Tier), open [${API_BASE}/api/health](${API_BASE}/api/health) in a browser tab to wake it up from sleep, then try again.`
+        }`
       };
       setPrevChats(prev => [...prev, errorMessage]);
     } finally {
