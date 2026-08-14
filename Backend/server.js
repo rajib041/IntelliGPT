@@ -9,9 +9,17 @@ const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/intelligpt";
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
-// Health check route
+// Root and Health check routes
+app.get("/", (req, res) => {
+    res.status(200).json({ name: "IntelliGPT API", status: "running", timestamp: new Date().toISOString() });
+});
+
 app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
 });

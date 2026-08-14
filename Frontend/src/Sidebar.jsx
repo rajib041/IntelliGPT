@@ -3,6 +3,8 @@ import { useContext, useEffect, useCallback } from "react";
 import { MyContext } from "./MyContext.jsx";
 import blackLogo from "./assets/blacklogo.png";
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
+
 function Sidebar() {
   const {
     allThreads,
@@ -19,7 +21,7 @@ function Sidebar() {
 
   const getAllThreads = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/thread");
+      const response = await fetch(`${API_BASE}/api/thread`);
       if (!response.ok) return;
       const res = await response.json();
       const filteredData = res.map(thread => ({
@@ -47,7 +49,7 @@ function Sidebar() {
     setSidebarOpen(false);
 
     try {
-      const response = await fetch(`http://localhost:8080/api/thread/${newThreadId}`);
+      const response = await fetch(`${API_BASE}/api/thread/${newThreadId}`);
       if (!response.ok) {
         console.error("Thread not found on server");
         return;
@@ -64,7 +66,7 @@ function Sidebar() {
   const deleteThread = async (e, threadId) => {
     e.stopPropagation();
     try {
-      const response = await fetch(`http://localhost:8080/api/thread/${threadId}`, { method: "DELETE" });
+      const response = await fetch(`${API_BASE}/api/thread/${threadId}`, { method: "DELETE" });
       if (!response.ok) {
         console.error("Failed to delete thread");
         return;

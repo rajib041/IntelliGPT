@@ -4,6 +4,8 @@ import { MyContext } from "./MyContext.jsx";
 import { useContext, useState, useRef, useEffect } from "react";
 import { ScaleLoader } from "react-spinners";
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
+
 function ChatWindow() {
   const {
     prompt,
@@ -46,7 +48,7 @@ function ChatWindow() {
 
   const refreshThreads = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/thread");
+      const response = await fetch(`${API_BASE}/api/thread`);
       if (!response.ok) return;
       const res = await response.json();
       setAllThreads(res.map(t => ({ threadId: t.threadId, title: t.title })));
@@ -78,7 +80,7 @@ function ChatWindow() {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/chat", options);
+      const response = await fetch(`${API_BASE}/api/chat`, options);
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
       }
