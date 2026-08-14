@@ -1,11 +1,23 @@
 import express from "express";
+import mongoose from "mongoose";
 import Thread from "../models/Thread.js";
 import getOpenAIAPIResponse from "../utils/openai.js";
 
 const router = express.Router();
 
+// Middleware to check database connection
+const checkDbConnection = (req, res, next) => {
+    if (mongoose.connection.readyState !== 1) {
+        console.warn("MongoDB is not connected. Operation cannot proceed.");
+        return res.status(503).json({
+            error: "Database is not connected. Please add a valid MONGODB_URI (MongoDB Atlas) to your Render environment variables."
+        });
+    }
+    next();
+};
+
 // Test route
-router.post("/test", async (req, res) => {
+router.post("/test", checkDbConnection, async (req, res) => {
     try {
         const thread = new Thread({
             threadId: "abc",
@@ -21,7 +33,7 @@ router.post("/test", async (req, res) => {
 });
 
 // Get all threads (sorted by most recently updated)
-router.get("/thread", async (req, res) => {
+router.get("/thread", checkDbConnection, async (req, res) => {
     try {
         const threads = await Thread.find({}).sort({ updatedAt: -1 });
         return res.status(200).json(threads);
@@ -32,7 +44,7 @@ router.get("/thread", async (req, res) => {
 });
 
 // Get messages for a specific thread
-router.get("/thread/:threadId", async (req, res) => {
+router.get("/thread/:threadId", checkDbConnection, async (req, res) => {
     const { threadId } = req.params;
 
     try {
@@ -50,7 +62,7 @@ router.get("/thread/:threadId", async (req, res) => {
 });
 
 // Delete a specific thread
-router.delete("/thread/:threadId", async (req, res) => {
+router.delete("/thread/:threadId", checkDbConnection, async (req, res) => {
     const { threadId } = req.params;
 
     try {
@@ -78,32 +90,42 @@ router.post("/chat", async (req, res) => {
     const trimmedMessage = message.trim();
 
     try {
-        let thread = await Thread.findOne({ threadId });
-
-        if (!thread) {
-            // Generate clean title (first 50 chars)
-            const title = trimmedMessage.length > 50
-                ? `${trimmedMessage.substring(0, 47)}...`
-                : trimmedMessage;
-
-            thread = new Thread({
-                threadId,
-                title,
-                messages: [{ role: "user", content: trimmedMessage }]
-            });
-        } else {
-            thread.messages.push({ role: "user", content: trimmedMessage });
-        }
-
+        // 1. Get AI completion first
         const assistantReply = await getOpenAIAPIResponse(trimmedMessage);
 
-        thread.messages.push({
-            role: "assistant",
-            content: assistantReply || "I am sorry, but I could not generate a response."
-        });
-        thread.updatedAt = new Date();
+        // 2. Persist to DB if connected
+        if (mongoose.connection.readyState === 1) {
+            try {
+                let thread = await Thread.findOne({ threadId });
 
-        await thread.save();
+                if (!thread) {
+                    const title = trimmedMessage.length > 50
+                        ? `${trimmedMessage.substring(0, 47)}...`
+                        : trimmedMessage;
+
+                    thread = new Thread({
+                        threadId,
+                        title,
+                        messages: [{ role: "user", content: trimmedMessage }]
+                    });
+                } else {
+                    thread.messages.push({ role: "user", content: trimmedMessage });
+                }
+
+                thread.messages.push({
+                    role: "assistant",
+                    content: assistantReply || "I am sorry, but I could not generate a response."
+                });
+                thread.updatedAt = new Date();
+
+                await thread.save();
+            } catch (dbErr) {
+                console.error("Database save failed:", dbErr.message);
+            }
+        } else {
+            console.warn("MongoDB not connected; responding without DB persistence.");
+        }
+
         return res.status(200).json({ reply: assistantReply, threadId });
     } catch (err) {
         console.error("Error in /chat endpoint:", err);

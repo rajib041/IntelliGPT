@@ -15,13 +15,25 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Root and Health check routes
+// Root route
 app.get("/", (req, res) => {
-    res.status(200).json({ name: "IntelliGPT API", status: "running", timestamp: new Date().toISOString() });
+    res.status(200).json({
+        name: "IntelliGPT API",
+        status: "running",
+        database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+        timestamp: new Date().toISOString()
+    });
 });
 
+// Health check with DB status
 app.get("/api/health", (req, res) => {
-    res.status(200).json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
+    const isDbConnected = mongoose.connection.readyState === 1;
+    res.status(200).json({
+        status: "ok",
+        database: isDbConnected ? "connected" : "disconnected",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
 });
 
 // API chat routes
@@ -29,7 +41,9 @@ app.use("/api", chatRoutes);
 
 const connectDB = async () => {
     try {
-        await mongoose.connect(MONGODB_URI);
+        await mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 5000
+        });
         console.log("Connected to MongoDB successfully!");
     } catch (err) {
         console.error("Failed to connect to MongoDB:", err.message);

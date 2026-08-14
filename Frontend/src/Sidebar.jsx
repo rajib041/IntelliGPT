@@ -24,6 +24,7 @@ function Sidebar() {
       const response = await fetch(`${API_BASE}/api/thread`);
       if (!response.ok) return;
       const res = await response.json();
+      if (!Array.isArray(res)) return;
       const filteredData = res.map(thread => ({
         threadId: thread.threadId,
         title: thread.title || "Untitled Chat",
